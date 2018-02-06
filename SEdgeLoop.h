@@ -5,6 +5,8 @@
 #include <maya\MGlobal.h>
 #include <maya\MFnMesh.h>
 #include <maya\MDistance.h>
+#include <maya\MPointArray.h>
+
 #include <deque>
 
 class SEdgeLoop {
@@ -25,11 +27,16 @@ public:
 	unsigned int numEdges() const;
 	unsigned int &operator[](const unsigned int index);
 	void get(MIntArray &edges);
+	MStatus getVertices(MIntArray &vertices);
+	MStatus getPoints(MPointArray &points, MSpace::Space space = MSpace::kObject);
 
 	MStatus getEdgeVertices(const unsigned int index, int2 &vertices, bool &flipped);
 
 	static void flip(int2 &vertices);
 	bool isFlipped(const unsigned int index);
+
+	bool isClosed();
+	void endVertices(int2 &vertices);
 
 	void print();
 

@@ -72,6 +72,95 @@ MStatus SSeamMesh::offsetEdgeloops(float offsetDistance, bool createPolygons) {
 	return MS::kSuccess;
 }
 
+MStatus SSeamMesh::setHardEdges(MIntArray& edges, double tresholdAngle) {
+	MStatus status;
+
+	MFnMesh fnMesh(m_mesh);
+
+	// Put edges in set for faster search
+	std::set <unsigned int> hardEdges;
+	for (unsigned int e = 0; e < edges.length(); e++)
+		hardEdges.insert(edges[e]);
+
+	// Now we're going to generate new ids for vertices on detached edges
+	MItMeshVertex itVertex(m_mesh);
+	MItMeshEdge itEdge(m_mesh);
+	for (itVertex.reset(); !itVertex.isDone(); itVertex.next()) {
+		MIntArray
+			conEdges,
+			conFaces,
+			tmpFaces;
+
+		itVertex.getConnectedEdges(conEdges);
+		itVertex.getConnectedFaces(tmpFaces);
+
+		int
+			numEdges = conEdges.length(),
+			numFaces = tmpFaces.length();
+
+		for (int i = numFaces - 1; i >= 0; i--)
+			conFaces.append(tmpFaces[i]);
+
+		int
+			startEdge = -1,
+			numSplits = 0;
+
+		for (int e = 0; e < numEdges; e++) {
+			if (hardEdges.find(conEdges[e]) != hardEdges.end()) {
+				int prevId;
+				itEdge.setIndex(conEdges[e], prevId);
+				
+				MIntArray edgeConFaces;
+				itEdge.getConnectedFaces(edgeConFaces);
+
+				if (2 != edgeConFaces.length())
+					continue;
+
+				MVector vA, vB;
+				fnMesh.getPolygonNormal(edgeConFaces[0], vA);
+				fnMesh.getPolygonNormal(edgeConFaces[1], vB);
+
+				double angle = M_PI - acos(vA*vB);
+
+				if (tresholdAngle < angle)
+					continue;
+
+				if (startEdge < 0)
+					startEdge = e;
+				numSplits++;
+			}
+		}
+		if (itVertex.onBoundary())
+			startEdge = 0;
+
+		if ((numSplits == 1 && !itVertex.onBoundary()) || numSplits == 0)
+			continue;
+
+		MVector average;
+		MIntArray faces;
+		
+		for (int f = 0; f < numFaces; f++) {
+			int relativeIdx = (startEdge + f) % numFaces;
+
+			if (f!=0 && hardEdges.find(conEdges[relativeIdx]) != hardEdges.end()) {
+				average.normal();
+				for (unsigned int i = 0; i < faces.length(); i++)
+					fnMesh.setFaceVertexNormal(average, faces[i], itVertex.index());
+
+				average = MVector::zero;
+				faces.clear();
+			}
+
+			MVector polyNormal;
+			fnMesh.getPolygonNormal(conFaces[relativeIdx], polyNormal);
+			average += polyNormal;
+			faces.append(conFaces[relativeIdx]);
+		}
+	}
+
+	return MS::kSuccess;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Private methods ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////

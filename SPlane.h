@@ -3,95 +3,64 @@
 #include <maya\MPoint.h>
 #include <maya\MVector.h>
 #include <maya\MStatus.h>
+#include <maya\MPointArray.h>
 
 class SPlane{
 public:
-	SPlane() {
-		m_point = MPoint::origin;
-		m_normal = MVector::xAxis;
-	}
+	SPlane();
+	SPlane(const MPoint& point, const MVector& normal, const MVector& tangent = MVector::zero);
+	SPlane(const MPointArray& pointCloud, MStatus *status = NULL);
+	SPlane& operator=(const SPlane& plane);
 
-	SPlane(const MPoint& point, const MVector& normal) {
-		m_point = point;
-		m_normal = normal;
-	}
+	~SPlane();
 
-	~SPlane() {}
+	void setOrigin(const MPoint& origin);
+	void setNormal(const MVector& normal, bool tangentReset = true);
+	void setTangent(const MVector& tangent);
+	void resetTangent();
+	
+	MVector normal() const;
+	MVector tangent() const;
+	MPoint origin() const;
 
-	// Set values /////////////////////////////////////////////////////////////////////////////////////
+	MMatrix matrix();
 
-	MStatus setPoint(const MPoint& point) {
-		m_point = point;
-		return MS::kSuccess;
-	}
+	MPoint project(const MPoint &point);
+	MPointArray project(const MPointArray &points);
+	MVector project(const MVector &vector);
 
-	MStatus setNormal(const MVector& normal) {
-		m_normal = normal;
-		return MS::kSuccess;
-	}
+	bool intersect(const MPoint& point, const MVector& direction, MPoint& intersection, double& parameter);
 
-	// Get Values /////////////////////////////////////////////////////////////////////////////////////
-
-	MStatus getPoint(MPoint& point) {
-		point = m_point;
-		return MS::kSuccess;
-	}
-
-	MStatus getNormal(MVector& normal) {
-		normal = m_normal;
-		return MS::kSuccess;
-	}
-
-	MVector normal() {
-		return m_normal;
-	}
-
-
-	// Helper functions ///////////////////////////////////////////////////////////////////////////////
-
-	bool intersect(const MPoint& point, const MVector& direction, MPoint& intersection, double& parameter) {
-		double dot = m_normal*direction;
-		if (0 == dot)
-			return false;
-
-		double d = m_normal*MVector(m_point);
-		parameter = (d - m_normal*MVector(point)) / dot;
-		intersection = point + direction*parameter;
-
-		if (parameter<0 || parameter>1)
-			return false;
-		return true;
-	}
-
-	SPlane& operator*=(const MMatrix& matrix){
-		m_point *= matrix;
-		m_normal *= matrix;
-		return *this;
-	}
-
+	MStatus fit(const MPointArray &pointCloud);
+	
+	SPlane& operator*=(const MMatrix& matrix);
+	
 	friend SPlane operator*(SPlane plane, const MMatrix& matrix)
 	{
 		plane *= matrix;
 		return plane;
 	}
 
-	void get(double values[4]) {
-		MPoint intersection;
-		double parameter;
-		intersect(MPoint::origin, m_normal, intersection, parameter);
-		
-		values[0] = m_normal.x;
-		values[1] = m_normal.y;
-		values[2] = m_normal.z;
-		values[3] = (intersection-MPoint::origin).length();
-	}
+	void get(double values[4]);
 
-	MVector project(const MVector &vector) {
-		MVector projection = (m_normal^(m_normal^vector)).normal();
-		return projection*(vector*projection);
-	}
+	// Predefined planes
+	static SPlane ZERO;
+	static SPlane YZ;
+	static SPlane XZ;
+	static SPlane XY;
 
 protected:
-	MPoint m_point;
+	MPoint m_origin;
 	MVector m_normal;
+	MVector m_tangent;
 };
+
+bool operator==(const SPlane& lPl, const SPlane& rPl)
+{
+	return lPl.origin() == rPl.origin() && lPl.normal() == rPl.normal();
+}
+
+bool operator!=(const SPlane& lPl, const SPlane& rPl)
+{
+	return !(lPl == rPl);
+}

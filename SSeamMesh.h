@@ -14,6 +14,7 @@ public:
 
 	MStatus transferEdges(const MObject& sourceMesh, const MIntArray &edges);
 	MStatus offsetEdgeloops(float offsetDistance, bool createPolygons = true);
+	MStatus setHardEdges(MIntArray& edges, double tresholdAngle);
 
 protected:
 

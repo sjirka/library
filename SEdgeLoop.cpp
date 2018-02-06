@@ -1,5 +1,7 @@
 #include "SEdgeLoop.h"
 
+#include <set>
+
 	SEdgeLoop::SEdgeLoop(MObject *meshPtr) {
 		m_meshPtr = meshPtr;
 	}
@@ -19,7 +21,6 @@
 	}
 
 	SEdgeLoop::~SEdgeLoop() {
-		m_meshPtr = NULL;
 	}
 
 	void SEdgeLoop::setMeshPtr(MObject *meshPtr) {
@@ -142,8 +143,16 @@
 	MStatus SEdgeLoop::getEdgeVertices(const unsigned int index, int2 &vertices, bool &flipped) {
 		MStatus status;
 
+		if (m_meshPtr == NULL)
+			return MS::kFailure;
+
 		MFnMesh fnMesh(*m_meshPtr, &status);
 		CHECK_MSTATUS_AND_RETURN_IT(status);
+
+		if (index > (numEdges() - 1))
+			return MS::kInvalidParameter;
+		if (m_ordered[index] > (unsigned int)(fnMesh.numEdges() - 1))
+			return MS::kInvalidParameter;
 
 		status = fnMesh.getEdgeVertices(m_ordered[index], vertices);
 		CHECK_MSTATUS_AND_RETURN_IT(status);
@@ -155,6 +164,64 @@
 		return MS::kSuccess;
 	}
 
+	MStatus SEdgeLoop::getVertices(MIntArray& vertices) {
+		MStatus status;
+
+		vertices.clear();
+
+		for (unsigned int i = 0; i < numEdges(); i++) {
+			int2 edgeVertices; bool flipped;
+			status = getEdgeVertices(i, edgeVertices, flipped);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+			if(i==0)
+				vertices.append(edgeVertices[0]);
+			vertices.append(edgeVertices[1]);
+		}
+
+		return MS::kSuccess;
+	}
+
+	MStatus SEdgeLoop::getPoints(MPointArray& points, MSpace::Space space) {
+		MStatus status;
+
+		points.clear();
+
+		MIntArray vertices;
+		status = getVertices(vertices);
+		CHECK_MSTATUS_AND_RETURN_IT(status);
+
+		MFnMesh fnMesh(*m_meshPtr, &status);
+		CHECK_MSTATUS_AND_RETURN_IT(status);
+
+		MPointArray meshPoints;
+		status = fnMesh.getPoints(meshPoints, space);
+		CHECK_MSTATUS_AND_RETURN_IT(status);
+
+		for (unsigned int i = 0; i < vertices.length(); i++)
+			points.append(meshPoints[vertices[i]]);
+
+		return MS::kSuccess;
+	}
+
 	bool SEdgeLoop::isFlipped(const unsigned int index) {
 		return m_flipped[index];
+	}
+
+	bool SEdgeLoop::isClosed() {
+		int2 vertices;
+		endVertices(vertices);
+
+		if (vertices[0] == vertices[1])
+			return true;
+		return false;
+	}
+
+	void SEdgeLoop::endVertices(int2 &vertices) {
+		int2 first, last;
+		bool flFirst, flLast;
+		getEdgeVertices(0, first, flFirst);
+		getEdgeVertices(numEdges() - 1, last, flLast);
+
+		vertices[0] = first[0];
+		vertices[1] = last[1];
 	}

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SEdgeLoop.h"
+
 #include <maya\MObject.h>
 #include <maya\MStatus.h>
 #include <maya\MFnMesh.h>
@@ -13,11 +15,12 @@
 #include <maya\MItMeshVertex.h>
 #include <maya\MFnMeshData.h>
 #include <maya\MGlobal.h>
+#include <maya\MFnSingleIndexedComponent.h>
+
 #include <map>
 #include <set>
 #include <vector>
 #include <algorithm>
-#include "SEdgeLoop.h"
 
 class SMeshArray;
 
@@ -45,6 +48,7 @@ public:
 	MStatus			pullVertices(const MIntArray& vertices, const float distance);
 
 	virtual MStatus setActiveEdges(const MIntArray& edges);
+	virtual MStatus setActiveEdges(const MObject& edgeComponent);
 	void			getActiveEdges(MIntArray& edges);
 	void			getActiveLoops(std::vector <SEdgeLoop> &activeLoops);
 	MStatus			getBoundaryEdges(MIntArray &edges);
@@ -52,6 +56,8 @@ public:
 	
 	MStatus			getEdgeVertices(const MIntArray& edges, MIntArray& vertices);
 	MVector			getEdgeVector(int edge, int fromVertex = -1);
+
+	MStatus			groupConnectedComponents(const MObject &component, MObjectArray& componentGroups);
 
 protected:
 	MObject m_mesh;
@@ -63,6 +69,9 @@ protected:
 
 	virtual MStatus extendEdgeLoop(MItMeshVertex &itVertex, std::set <unsigned int> &remainingEdges, SEdgeLoop &activeLoop);
 	virtual MStatus contiguousEdges(MItMeshVertex &itVertex, std::set <unsigned int> &remainingEdges, SEdgeLoop &loop, const int edge);
+
+	MStatus groupConnectedFaces(MItMeshPolygon &itPolygon, std::set <unsigned int> &compSet, MIntArray &indices);
+	MStatus groupConnectedVertices(MItMeshVertex &itVertex, std::set <unsigned int> &compSet, MIntArray &indices);
 };
 
 class SMeshPolygon

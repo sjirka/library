@@ -1,6 +1,8 @@
 #pragma once
 
 #include <maya/MPointArray.h>
+#include <maya\MDoubleArray.h>
+#include <maya\MVectorArray.h>
 
 class SMath{
 public:
@@ -112,5 +114,43 @@ public:
 
 		return smooth;
 	};
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	static double max(MDoubleArray &values) {
+		double maxValue = 0;
+		for (unsigned int i = 0; i < values.length(); i++)
+			if (i == 0 || maxValue < values[i])
+				maxValue = values[i];
+		return maxValue;
+	}
+
+	static double min(MDoubleArray &values) {
+		double minValue = 0;
+		for (unsigned int i = 0; i < values.length(); i++)
+			if (i == 0 || values[i] < minValue)
+				minValue = values[i];
+		return minValue;
+	}
+
+	static MDoubleArray remap(MDoubleArray &values, double min, double max, double newMin, double newMax) {
+		MDoubleArray newValues(values);
+		double oldDomain = max - min;
+		double newDomain = newMax - newMin;
+		for (unsigned int i = 0; i < values.length(); i++)
+			newValues[i] = newMin + (values[i] - min) * newDomain / oldDomain;
+		return newValues;
+	}
+
+	static double polyRadius(double unsmoothedRadius, double radialSegments, double subdivs) {
+		double newRadius = unsmoothedRadius;
+		for (unsigned int i = 0; i < subdivs; i++) {
+			double angle = 2 * M_PI / (radialSegments * pow(2, subdivs - i));
+			newRadius /= cos(angle);
+		}
+		return newRadius;
+	}
 
 };

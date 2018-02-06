@@ -5,7 +5,7 @@ SMesh::SMesh(){};
 SMesh::~SMesh(){}
 
 SMesh::SMesh(MObject &obj, MStatus *ref){
-	if (obj.apiType() != MFn::kMeshData)
+	if (obj.apiType() != MFn::kMeshData && obj.apiType() != MFn::kMesh)
 		*ref = MS::kInvalidParameter;
 	
 	m_mesh = obj;
@@ -261,7 +261,9 @@ MStatus SMesh::detachEdges(const MIntArray &edges) {
 			polyIndices.append(polygon[p]);
 	
 	// Load UV sets
-	SUVSet currentSet(fnMesh.currentUVSetName());
+	SUVSet
+		currentSet(fnMesh.currentUVSetName());
+
 	status = fnMesh.getUVs(currentSet.U, currentSet.V);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 	status = fnMesh.getAssignedUVs(currentSet.uvCounts, currentSet.uvIndices);
@@ -284,6 +286,7 @@ MStatus SMesh::detachEdges(const MIntArray &edges) {
 	status = fnMesh.assignUVs(currentSet.uvCounts, currentSet.uvIndices);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
+	// Get shared normals used by this class for parallel flanges etc.
 	MVectorArray newNormals;
 	for (unsigned int i = 0; i<meshNormals.length(); i++)
 		newNormals.append(meshNormals[i]);
@@ -505,16 +508,18 @@ MStatus SMesh::extrudeEdges(const MIntArray& edges, const float thickness, const
 MStatus SMesh::setActiveEdges(const MIntArray& edges) {
 	MStatus status;
 
-	MFnMesh fnMesh(m_mesh, &status);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	int numEdges = fnMesh.numEdges();
+	m_activeLoops.clear();
 	
 	std::set <unsigned int> remainingEdges;
 	for (unsigned int e = 0; e < edges.length(); e++)
-		if (edges[e] < numEdges)
-			remainingEdges.insert(edges[e]);
-		else
-			return MS::kInvalidParameter;
+		remainingEdges.insert(edges[e]);
+
+	// Check if mesh contains listed edges
+	MFnMesh fnMesh(m_mesh, &status);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	unsigned int numEdges = fnMesh.numEdges();
+	if(*remainingEdges.rbegin() >= numEdges)
+		return MS::kInvalidParameter;
 
 	MItMeshVertex itVertex(m_mesh, &status);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
@@ -564,6 +569,25 @@ MStatus SMesh::setActiveEdges(const MIntArray& edges) {
 	return MS::kSuccess;
 }
 
+MStatus SMesh::setActiveEdges(const MObject& edgeComponent) {
+	MStatus status;
+
+	if (edgeComponent.apiType() != MFn::kMeshEdgeComponent)
+		return MS::kInvalidParameter;
+
+	MFnSingleIndexedComponent fnComponent(edgeComponent, &status);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	
+	MIntArray edges;
+	status = fnComponent.getElements(edges);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
+	status = setActiveEdges(edges);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
+	return MS::kSuccess;
+}
+
 void SMesh::getActiveEdges(MIntArray& edges) {
 	edges.clear();
 	for (auto &loop : m_activeLoops)
@@ -576,8 +600,147 @@ void SMesh::getActiveLoops(std::vector <SEdgeLoop> &activeLoops) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// Private methods ////////////////////////////////////////////////////////////////////////////////
+// Component grouping  ////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+MStatus	SMesh::groupConnectedComponents(const MObject &component, MObjectArray& componentGroups) {
+	MStatus status;
+
+	componentGroups.clear();
+
+	// Get indices from the component
+	MFnSingleIndexedComponent fnComponent(component, &status);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	MIntArray compIndices;
+	fnComponent.getElements(compIndices);
+
+	std::set <unsigned int> compSet;
+	for (unsigned int i = 0; i < compIndices.length(); i++)
+		compSet.insert(compIndices[i]);
+
+	// Group faces
+	if (component.apiType() == MFn::kMeshPolygonComponent) {
+		MItMeshPolygon itPolygon(m_mesh);
+		while (compSet.size() != 0) {
+			int currentId = *compSet.begin(), previousId;
+			compSet.erase(currentId);
+			MIntArray groupIndices;
+			groupIndices.append(currentId);
+
+			status = itPolygon.setIndex(currentId, previousId);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+	
+			status = groupConnectedFaces(itPolygon, compSet, groupIndices);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+
+			MFnSingleIndexedComponent fnGroupComponent;
+			MObject groupComponent = fnGroupComponent.create(MFn::kMeshPolygonComponent, &status);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+
+			fnGroupComponent.addElements(groupIndices);
+			componentGroups.append(groupComponent);
+		}
+	}
+	// Group vertices
+	else if (component.apiType() == MFn::kMeshVertComponent) {
+		MItMeshVertex itVertex(m_mesh);
+		while (compSet.size() != 0) {
+			int currentId = *compSet.begin(), previousId;
+			compSet.erase(currentId);
+			MIntArray groupIndices;
+			groupIndices.append(currentId);
+
+			status = itVertex.setIndex(currentId, previousId);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+
+			status = groupConnectedVertices(itVertex, compSet, groupIndices);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+
+			MFnSingleIndexedComponent fnGroupComponent;
+			MObject groupComponent = fnGroupComponent.create(MFn::kMeshVertComponent, &status);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+
+			fnGroupComponent.addElements(groupIndices);
+			componentGroups.append(groupComponent);
+		}
+	}
+	// Group edges
+	else if (component.apiType() == MFn::kMeshEdgeComponent)
+	{
+		status = setActiveEdges(compIndices);
+		CHECK_MSTATUS_AND_RETURN_IT(status);
+		std::vector<SEdgeLoop> loops;
+		getActiveLoops(loops);
+
+		for (auto &loop : loops) {
+			MIntArray groupIndices;
+			loop.get(groupIndices);
+
+			MFnSingleIndexedComponent fnGroupComponent;
+			MObject groupComponent = fnGroupComponent.create(MFn::kMeshEdgeComponent, &status);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+
+			fnGroupComponent.addElements(groupIndices);
+			componentGroups.append(groupComponent);
+		}
+	}
+	else
+		return MS::kInvalidParameter;
+
+	return MS::kSuccess;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Protected methods //////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+MStatus SMesh::groupConnectedFaces(MItMeshPolygon &itPolygon, std::set <unsigned int> &compSet, MIntArray &indices) {
+	MStatus status;
+
+	MIntArray connectedFaces;
+	itPolygon.getConnectedFaces(connectedFaces);
+
+	for (unsigned int f = 0; f < connectedFaces.length(); f++) {
+		int currentId = connectedFaces[f], previousId;
+
+		if (compSet.find(currentId) != compSet.end()) {
+			compSet.erase(currentId);
+			indices.append(currentId);
+
+			status = itPolygon.setIndex(currentId, previousId);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+
+			status = groupConnectedFaces(itPolygon, compSet, indices);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+		}
+	}
+
+	return MS::kSuccess;
+}
+
+MStatus SMesh::groupConnectedVertices(MItMeshVertex &itVertex, std::set <unsigned int> &compSet, MIntArray &indices) {
+	MStatus status;
+
+	MIntArray connectedVertices;
+	itVertex.getConnectedVertices(connectedVertices);
+
+	for (unsigned int v = 0; v < connectedVertices.length(); v++) {
+		int currentId = connectedVertices[v], previousId;
+
+		if (compSet.find(currentId) != compSet.end()) {
+			compSet.erase(currentId);
+			indices.append(currentId);
+
+			status = itVertex.setIndex(currentId, previousId);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+
+			status = groupConnectedVertices(itVertex, compSet, indices);
+			CHECK_MSTATUS_AND_RETURN_IT(status);
+		}
+	}
+
+	return MS::kSuccess;
+}
 
 MStatus SMesh::contiguousEdges(MItMeshVertex &itVertex, std::set <unsigned int> &remainingEdges, SEdgeLoop &loop, const int edge) {
 	MStatus status;

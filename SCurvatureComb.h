@@ -1,14 +1,14 @@
 #pragma once
 
+#include "SData.h"
+#include "SMath.h"
+
 #include <maya\MObject.h>
 #include <maya\MPointArray.h>
 #include <maya\MFnNurbsCurve.h>
 #include <maya\MVector.h>
 #include <maya\MDoubleArray.h>
 #include <maya\MGlobal.h>
-
-#include "../_library/SData.h"
-#include "../_library/SMath.h"
 
 class SCurvatureComb
 {
@@ -161,8 +161,12 @@ protected:
 		}
 
 		// Calculate curvature comb points
-		for (unsigned int i = 0; i < m_samples; i++)
-			m_crvPoints.set( m_samplePoints[i] + m_normals[i] * m_curvature[i] * m_scale, i);
+		for (unsigned int i = 0; i < m_samples; i++) {
+			double logScale = log10(m_curvature[i]+1);
+			double scale = logScale*m_scale;
+
+			m_crvPoints.set(m_samplePoints[i] + m_normals[i] * scale, i);
+		}
 
 		return MS::kSuccess;
 	};

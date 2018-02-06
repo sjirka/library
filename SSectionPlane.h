@@ -1,18 +1,19 @@
 #pragma once
 #include "SPlane.h"
 
-#include <set>
-#include <map>
 #include <maya\MItMeshPolygon.h>
 #include <maya\MItMeshEdge.h>
 #include <maya\MItMeshVertex.h>
 #include <maya\MFnNurbsCurveData.h>
 #include <maya\MFnNurbsCurve.h>
 
+#include <set>
+#include <map>
+
 class SSectionPlane : public SPlane{
 public:
 	SSectionPlane(const MPoint& point, const MVector& normal) {
-		m_point = point;
+		m_origin = point;
 		m_normal = normal;
 	}
 
