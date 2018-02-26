@@ -41,6 +41,16 @@ public:
 		return plane;
 	}
 
+	bool SPlane::operator==(const SPlane& other)
+	{
+		return this->origin() == other.origin() && this->normal() == other.normal();
+	}
+
+	bool SPlane::operator!=(const SPlane& other)
+	{
+		return !(*this == other);
+	}
+
 	void get(double values[4]);
 
 	// Predefined planes
@@ -54,13 +64,3 @@ protected:
 	MVector m_normal;
 	MVector m_tangent;
 };
-
-bool operator==(const SPlane& lPl, const SPlane& rPl)
-{
-	return lPl.origin() == rPl.origin() && lPl.normal() == rPl.normal();
-}
-
-bool operator!=(const SPlane& lPl, const SPlane& rPl)
-{
-	return !(lPl == rPl);
-}
