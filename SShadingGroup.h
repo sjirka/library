@@ -19,6 +19,9 @@ public:
 		if (fnSG.restriction() != MFnSet::kRenderableOnly)
 			return MS::kFailure;
 
+		fnSG.setLocked(false);
+		fnSG.setDoNotWrite(false);
+
 		status = fnSG.addMember(dagPath, component);
 		return status;
 	}

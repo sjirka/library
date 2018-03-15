@@ -19,10 +19,7 @@ public:
 		MPoint eye = fnCamera.eyePoint(MSpace::kWorld);
 		MVector direction = fnCamera.viewDirection(MSpace::kWorld);
 
-		MDistance distance = (fnCamera.isOrtho())?
-			MDistance(fnCamera.orthoWidth(), MDistance::internalUnit()):
-			MDistance(direction * (point - eye), MDistance::internalUnit());
-		double scaleFactor = distance.asMillimeters() / fnCamera.focalLength();
-		return scaleFactor;
+		double distance = (fnCamera.isOrtho()) ? fnCamera.orthoWidth() : direction * (point - eye);
+		return distance / fnCamera.focalLength();
 	};
 };

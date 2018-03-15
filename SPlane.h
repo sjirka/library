@@ -41,13 +41,11 @@ public:
 		return plane;
 	}
 
-	bool SPlane::operator==(const SPlane& other)
-	{
+	bool SPlane::operator==(const SPlane& other){
 		return this->origin() == other.origin() && this->normal() == other.normal();
 	}
 
-	bool SPlane::operator!=(const SPlane& other)
-	{
+	bool SPlane::operator!=(const SPlane& other){
 		return !(*this == other);
 	}
 
