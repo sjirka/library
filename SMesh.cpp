@@ -1,5 +1,7 @@
 #include "SMesh.h"
 
+#include <maya\MDagPath.h>
+
 SMesh::SMesh(){};
 
 SMesh::~SMesh(){}
@@ -7,7 +9,7 @@ SMesh::~SMesh(){}
 SMesh::SMesh(MObject &obj, MStatus *ref){
 	if (obj.apiType() != MFn::kMeshData && obj.apiType() != MFn::kMesh)
 		*ref = MS::kInvalidParameter;
-	
+
 	m_mesh = obj;
 
 	MFnMesh fnMesh(m_mesh);
@@ -21,25 +23,22 @@ SMesh::SMesh(const SMesh &mesh){
 
 	MFnMesh fnMesh(mesh.m_mesh);
 	fnMesh.copy(mesh.m_mesh, m_mesh);
-
-	m_normals = mesh.m_normals;
-	m_vtxMap = mesh.m_vtxMap;
-	m_vtxSplitValence = mesh.m_vtxSplitValence;
-	m_activeLoops = mesh.m_activeLoops;
-
+	copyAttributes(mesh);
 	updateMeshPointers();
 };
 
 SMesh& SMesh::operator=(const SMesh& mesh) {
 	m_mesh = mesh.m_mesh;
+	copyAttributes(mesh);
+	updateMeshPointers();
+	return *this;
+}
+
+void SMesh::copyAttributes(const SMesh& mesh) {
 	m_normals = mesh.m_normals;
 	m_vtxMap = mesh.m_vtxMap;
 	m_vtxSplitValence = mesh.m_vtxSplitValence;
 	m_activeLoops = mesh.m_activeLoops;
-
-	updateMeshPointers();
-
-	return *this;
 }
 
 void SMesh::updateMeshPointers() {
@@ -49,6 +48,10 @@ void SMesh::updateMeshPointers() {
 
 MObject SMesh::getObject() const {
 	return m_mesh;
+}
+
+bool SMesh::isNull() const {
+	return m_mesh.isNull();
 }
 
 bool SMesh::isEquivalent(const MObject& firstMesh, const MObject& secondMesh, MStatus *ref) {
@@ -597,6 +600,10 @@ void SMesh::getActiveEdges(MIntArray& edges) {
 
 void SMesh::getActiveLoops(std::vector <SEdgeLoop> &activeLoops) {
 	activeLoops = m_activeLoops;
+}
+
+std::vector <SEdgeLoop>* SMesh::activeLoopsPtr(){
+	return &m_activeLoops;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

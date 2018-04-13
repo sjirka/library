@@ -13,10 +13,12 @@ public:
 	~SSeamMesh();
 
 	MStatus transferEdges(const MObject& sourceMesh, const MIntArray &edges);
+	MStatus offsetEdgeloop(SEdgeLoop &edgeLoop, float offsetDistance, bool createPolygons = true);
 	MStatus offsetEdgeloops(float offsetDistance, bool createPolygons = true);
 	MStatus setHardEdges(MIntArray& edges, double tresholdAngle);
 
-protected:
+	void	getEdgeMap(std::map <unsigned int, unsigned int> &edgeMap);
 
-	MStatus offsetEdgeloop(SEdgeLoop &edgeLoop, float offsetDistance, bool createPolygons = true);
+protected:
+	std::map <unsigned int, unsigned int> m_edgeMap;
 };

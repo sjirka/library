@@ -40,8 +40,12 @@ public:
 
 	void print();
 
+	void reverse();
+	bool isReversed();
+
 protected:
 	MObject *m_meshPtr = NULL;
 	std::deque <unsigned int> m_ordered;
 	std::deque <bool> m_flipped;
+	bool m_isReversed = false;
 };

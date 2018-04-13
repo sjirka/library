@@ -225,3 +225,15 @@
 		vertices[0] = first[0];
 		vertices[1] = last[1];
 	}
+
+	void SEdgeLoop::reverse() {
+		std::reverse(m_ordered.begin(), m_ordered.end());
+		std::reverse(m_flipped.begin(), m_flipped.end());
+		for (auto &flipped : m_flipped)
+			flipped = (flipped) ? false : true;
+		m_isReversed = (m_isReversed) ? false : true;
+	}
+
+	bool SEdgeLoop::isReversed() {
+		return m_isReversed;
+	}

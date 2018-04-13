@@ -2,19 +2,19 @@
 
 SSeamMesh::SSeamMesh() {};
 
-SSeamMesh::SSeamMesh(MObject &obj, MStatus *ref) : SMesh(obj) {
-	if (obj.apiType() != MFn::kMeshData)
-		*ref = MS::kInvalidParameter;
+SSeamMesh::SSeamMesh(MObject &obj, MStatus *ref) : SMesh(obj, ref) {
 };
 
 SSeamMesh::SSeamMesh(SMesh &mesh) :SMesh(mesh) {
 };
 
 SSeamMesh::SSeamMesh(const SSeamMesh &mesh) :SMesh(mesh) {
+	m_edgeMap = mesh.m_edgeMap;
 };
 
 SSeamMesh& SSeamMesh::operator=(const SSeamMesh& mesh) {
 	SMesh::operator=(mesh);
+	m_edgeMap = mesh.m_edgeMap;
 	return *this;
 }
 
@@ -52,6 +52,7 @@ MStatus SSeamMesh::transferEdges(const MObject& sourceMesh, const MIntArray &edg
 		for (auto &srcEdge : srcEdges)
 			if (trgEdge.second == srcEdge.second) {
 				newEdges.append(trgEdge.first);
+				m_edgeMap[trgEdge.first] = edges[srcEdge.first];
 				break;
 			}
 
@@ -160,10 +161,6 @@ MStatus SSeamMesh::setHardEdges(MIntArray& edges, double tresholdAngle) {
 
 	return MS::kSuccess;
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Private methods ////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
 MStatus SSeamMesh::offsetEdgeloop(SEdgeLoop &edgeLoop, float offsetDistance, bool createPolygons) {
 	MStatus status;
@@ -330,4 +327,8 @@ MStatus SSeamMesh::offsetEdgeloop(SEdgeLoop &edgeLoop, float offsetDistance, boo
 		fnMesh.setPoints(meshPoints);
 
 	return MS::kSuccess;
+}
+
+void SSeamMesh::getEdgeMap(std::map <unsigned int, unsigned int> &edgeMap) {
+	edgeMap = m_edgeMap;
 }

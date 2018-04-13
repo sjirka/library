@@ -16,6 +16,7 @@
 #include <maya\MFnMeshData.h>
 #include <maya\MGlobal.h>
 #include <maya\MFnSingleIndexedComponent.h>
+#include <maya\MMatrix.h>
 
 #include <map>
 #include <set>
@@ -34,6 +35,7 @@ public:
 	~SMesh();
 
 	MObject			getObject() const;
+	bool			isNull() const;
 	static bool		isEquivalent(const MObject& firstMesh, const MObject& secondMesh, MStatus *ref = NULL);
 	MStatus			updateMesh(const MObject& sourceMesh);
 	MStatus			smoothMesh(MMeshSmoothOptions &smoothOptions);
@@ -51,6 +53,8 @@ public:
 	virtual MStatus setActiveEdges(const MObject& edgeComponent);
 	void			getActiveEdges(MIntArray& edges);
 	void			getActiveLoops(std::vector <SEdgeLoop> &activeLoops);
+	std::vector		<SEdgeLoop>	*activeLoopsPtr();
+
 	MStatus			getBoundaryEdges(MIntArray &edges);
 	void			updateMeshPointers();
 	
@@ -72,6 +76,8 @@ protected:
 
 	MStatus groupConnectedFaces(MItMeshPolygon &itPolygon, std::set <unsigned int> &compSet, MIntArray &indices);
 	MStatus groupConnectedVertices(MItMeshVertex &itVertex, std::set <unsigned int> &compSet, MIntArray &indices);
+
+	virtual void copyAttributes(const SMesh& mesh);
 };
 
 class SMeshPolygon

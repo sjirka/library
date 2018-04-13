@@ -11,10 +11,15 @@ class SCamera
 public:
 	SCamera() {};
 
-	static double scaleFactor(M3dView& view, MPoint& point) {
-		MDagPath dPath;
-		view.getCamera(dPath);
-		MFnCamera fnCamera(dPath);
+	static double scaleFactor(M3dView& view, const MPoint& point) {
+		MDagPath cameraPath;
+		view.getCamera(cameraPath);
+		
+		return scaleFactor(cameraPath, point);
+	};
+
+	static double scaleFactor(MDagPath& camera, const MPoint& point) {
+		MFnCamera fnCamera(camera);
 
 		MPoint eye = fnCamera.eyePoint(MSpace::kWorld);
 		MVector direction = fnCamera.viewDirection(MSpace::kWorld);
