@@ -10,12 +10,14 @@
 		m_meshPtr = edgeLoop.m_meshPtr;
 		m_ordered = edgeLoop.m_ordered;
 		m_flipped = edgeLoop.m_flipped;
+		m_isReversed = edgeLoop.m_isReversed;
 	};
 
 	SEdgeLoop& SEdgeLoop::operator=(const SEdgeLoop& edgeLoop) {
 		m_meshPtr = edgeLoop.m_meshPtr;
 		m_ordered = edgeLoop.m_ordered;
 		m_flipped = edgeLoop.m_flipped;
+		m_isReversed = edgeLoop.m_isReversed;
 
 		return *this;
 	}
@@ -236,4 +238,8 @@
 
 	bool SEdgeLoop::isReversed() {
 		return m_isReversed;
+	}
+
+	void SEdgeLoop::setReversed(bool reversed) {
+		m_isReversed = reversed;
 	}

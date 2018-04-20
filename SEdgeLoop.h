@@ -42,6 +42,7 @@ public:
 
 	void reverse();
 	bool isReversed();
+	void setReversed(bool reversed);
 
 protected:
 	MObject *m_meshPtr = NULL;
