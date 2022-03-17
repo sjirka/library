@@ -586,7 +586,6 @@ MStatus SMesh::setActiveEdges(const MObject& edgeComponent) {
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	status = setActiveEdges(edges);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	return MS::kSuccess;
 }
